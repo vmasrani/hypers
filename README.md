@@ -65,7 +65,7 @@ Hypers is a standalone Python file with no additional dependencies. Just copy th
 
 Then you can `import hypers from Hypers` in all your projects. Super handy to prevent the case where you have K slightly modified copies of hypers.py and you've tweaked a few of them.
 
-See example and intended usage in main.py
+See example and intended usage in `main.py`.
 ## Contributing
 
 Contributions to Hypers are welcome! Please submit a pull request or open an issue on GitHub.
