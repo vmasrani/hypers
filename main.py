@@ -1,4 +1,4 @@
-from typing import Any #
+from typing import Any
 import ml_helpers as mlh
 from hypers import Hypers
 from time import sleep
@@ -84,8 +84,12 @@ def train(args: Args):
 #     ....
 
 # train(args)
-# - much cleaner, and you can add new hyperparameters, and get IDE autocomplete
+# - much cleaner, you can add new hyperparameters without changing
+#   function signatures, and you get IDE autocompletion.
 
 if __name__ == '__main__':
     loss = train(init(Args()))
     print(f'final loss: {loss}')
+
+    # Run with:
+    # python main.py config/default_params.py config/default_params2.py --tags=cat,dog,fish --layers=2,3,4,5 --use_dropout=true

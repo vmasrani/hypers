@@ -130,6 +130,7 @@ class Hypers:
         DEFAULT_ARGS.extend(default_args.__dict__.keys())
         COMMAND_LINE_ARGS.extend(cmdline_args.__dict__.keys())
 
+        # order matters here, load default, then file, then commandline args
         self._load_default_args(default_args)
         self._handle_special_args(argv)
         self._load_config_args(argv)
