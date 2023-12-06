@@ -61,7 +61,7 @@ python main.py config/default_params.py config/default_params2.py --tags=cat,dog
 ```
 ## Installation
 
-Hypers is a standalone Python file with no additional dependencies. Just copy the `hypers.py` file it into your project and import it. Protip: Rather than copying `hypers.py` into every new project, create a hidden directory in home (i.e. `~/.python`) and set your `PYTHONPATH` in your bashrc via `export PYTHONPATH=~/.python:$PYTHONPATH`. 
+Hypers is a standalone Python file with no additional dependencies. Just copy the `hypers.py` file it into your project and import it. **Protip:** Rather than copying `hypers.py` into every new project, create a hidden directory in home (i.e. `~/.python`) and set your `PYTHONPATH` in your bashrc via `export PYTHONPATH=~/.python:$PYTHONPATH`. 
 
 Then you can `import hypers from Hypers` in all your projects. Super handy to prevent the case where you have K slightly modified copies of hypers.py and you've tweaked a few of them.
 
