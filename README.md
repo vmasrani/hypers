@@ -28,7 +28,10 @@ parser.add_argument('--tags', type=str, nargs='+', default=['cat', 'dog'], help=
 
 args = parser.parse_args()
 lr = args.learning_rate
+
 print(args)
+# prints:
+# Namespace(batch_size=32, hidden_layers=[256, 128], learning_rate=0.01, optimizer='adam', tags=['cat', 'dog'], use_dropout=False)
 ```
 
 Into this:
@@ -44,12 +47,21 @@ class Args(Hypers):
     hidden_layers = [256, 128] # types inferred in lists too
     tags = ['cat','dog'] # types inferred in lists too
 
-    args = Args()
-    lr = args.learning_rate # maintains dot access
-
 args = Args()
 config = args.to_dict() # to upload to wandb
 lr = args.learning_rate # maintains dot access
+
+# auto-prints upon instantiation  
+# ----------------------------------------HyperParams----------------------------------------
+#                          (color code: default, config, command_line)
+# batch_size: 32
+# hidden_layers: [256, 128]
+# learning_rate: 0.01
+# optimizer: adam
+# tags: ['cat', 'dog']
+# use_dropout: True
+# -------------------------------------------------------------------------------------------
+
 ```
 
 ### Using Config Files

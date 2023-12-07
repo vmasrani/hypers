@@ -33,7 +33,7 @@ HEADER = f"""\
 {' ' * 30}
 """
 
-FOOTER = f"{'-' * 90}\n"
+FOOTER = f"{'-' * 91}\n"
 
 def get_code(test_str):
     if test_str in COMMAND_LINE_ARGS:
@@ -141,6 +141,5 @@ class Hypers:
 
     def merge_from_dict(self, d):
         self.__dict__.update(d)
-
 
 
