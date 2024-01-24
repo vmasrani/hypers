@@ -1,28 +1,19 @@
-import argparse
-from contextlib import suppress
-import inspect
-import os
+from __future__ import annotations
+from dataclasses import Field, dataclass, field, fields
+from typing import Any, List
 import sys
-from copy import deepcopy
-
-parser = argparse.ArgumentParser()
-cmdline_parser = deepcopy(parser)
-
-VALID_TYPES = (int, float, bool, str, list)
-CMDLINE_ARGS = tuple(s.replace("--", '').split("=")[0] for s in sys.argv[1:] if "=" in s)
-YELLOW = 33
-BLUE   = 34
-PURPLE = 35
-
-COMMAND_LINE_ARGS = []
-DEFAULT_ARGS      = []
-CONFIG_ARGS       = []
-
-FILE_LIST = {}
+import argparse
+from IPython.core.getipython import get_ipython
 
 # see https://www.geeksforgeeks.org/how-to-add-colour-to-text-python/
+
+
 def color(test_str, ansi_code):
     return f"\33[{ansi_code}m{test_str}\33[0m"
+
+
+# GLOBALS
+YELLOW, BLUE, PURPLE = 33, 34, 35
 
 HEADER = f"""\
 {'-' * 40}HyperParams{'-' * 40}
@@ -33,113 +24,140 @@ HEADER = f"""\
 {' ' * 30}
 """
 
-FOOTER = f"{'-' * 91}\n"
+FOOTER = f"{'-' * 90}\n"
+FILE_VARS = {}
+COLOR_MAPPING = {}
 
-def get_code(test_str):
-    if test_str in COMMAND_LINE_ARGS:
-        return YELLOW
-    elif test_str in CONFIG_ARGS:
-        return PURPLE
-    else:
-        return BLUE
 
-def member_filter(x):
-    return isinstance(x, VALID_TYPES) and x != "__main__"  # catch main manually
+def GET_COLOR(x) -> str:
+    return color(x, COLOR_MAPPING.get(x, BLUE))
 
-def read_config(file):
-    variables = {}
-    if "--" in file:
-        raise ValueError(f"{file} is not a valid argument.")
-
-    if not os.path.isfile(file):
-        raise ValueError(f"{file} is not a valid file.")
-
-    with open(file) as f:
-        exec(f.read(), variables)
-
-    return {k:v for k, v in variables.items() if not k.startswith('_')}
 
 def induce_bool(value):
-    if value.lower() in ('yes', 'true', 't', 'y'):
+    if value.lower() in ("yes", "true", "t", "y"):
         return True
-    elif value.lower() in ('no', 'false', 'f', 'n'):
+    elif value.lower() in ("no", "false", "f", "n"):
         return False
     else:
         raise ValueError
 
-def induce_type(value):
-    for t in [induce_bool, int, float]:
-        with suppress(ValueError):
-            return t(value)
-    return value
 
-def set_type(string_input):
-    string_input = string_input.split(',')
-    if len(string_input) == 1:
-        return induce_type(string_input[0])
+def add_to_parser(parser, name, val):
+    if isinstance(val, bool):
+        parser.add_argument(f"--{name}", type=induce_bool, default=val)
     else:
-        return list(map(induce_type, string_input))
-
-def add_argument(parser, name, value) -> None:
-    parser.add_argument(f"--{name}", default=value, type=set_type)
+        parser.add_argument(f"--{name}", type=type(val), default=val)
 
 
+def filter_cmdline_args(arg):
+    return arg.startswith("--") and not arg.startswith("--f")
+
+
+def read_config(file):
+    try:
+        variables = {}
+        with open(file, encoding='utf-8') as f:
+            exec(f.read(), variables)  # pylint: disable=exec-used
+        return {k: v for k, v in variables.items() if not k.startswith('_')}
+    except Exception as exc:
+        raise ValueError(f"{file} is not a valid argument.") from exc
+
+
+def TBD():
+    return field(init=False, repr=False)  # pylint: disable=invalid-field-call
+
+
+def load_globals(file_vars, changed_args):
+    # pylint: disable=global-statement
+    # global so not added as attr
+    cmd_line_args = [x[0] for x in changed_args]
+    color_mapping = {arg: PURPLE for var in file_vars.values() for arg in var.keys()}
+    color_mapping.update({arg: YELLOW for arg in cmd_line_args})
+
+    global COLOR_MAPPING
+    global FILE_VARS
+    FILE_VARS = file_vars
+    COLOR_MAPPING = color_mapping
+
+
+def is_notebook():
+    try:
+        shell = get_ipython().__class__.__name__
+        return shell == 'ZMQInteractiveShell'
+    except NameError:
+        return False      # Probably standard Python interpreter
+
+
+@dataclass
 class Hypers:
-    def __init__(self) -> None:
-        for name, value in self._get_members():
-            add_argument(parser, name, value)
-            if name in CMDLINE_ARGS:
-                add_argument(cmdline_parser, name, value)
-        self.parse_args()
-        print(self)
+    def __post_init__(self) -> None:
+        self._raise_untyped()
+
+        # set params in order default -> config -> cmd line
+        # set default vars
+        argv, changed_args = self._init_argsparse()
+
+        file_vars = self.parse_config_files(argv)
+
+        load_globals(file_vars, changed_args)
+
+        # set config vars
+        for variables in file_vars.values():
+            for name, value in variables.items():
+                self.set(name, value)
+
+        # set cmd line vars
+        for k, v in changed_args:
+            self.set(k, v)
+
+    def _init_argsparse(self):
+        parser = argparse.ArgumentParser(allow_abbrev=False)
+        for f in self._all_fields():
+            name, val = f.name, self.get(f.name)
+            add_to_parser(parser, name, val)
+
+        args, argv = parser.parse_known_args()
+        keys = [arg.replace("--", "").split("=")[0] for arg in sys.argv[1:] if arg.startswith("--")]
+        changed_args = [(k, getattr(args, k)) for k in keys if k in args]
+
+        return argv, changed_args
 
     def __str__(self):
-        files = [f"- Reading {count} arguments from {file}\n" for file, count in FILE_LIST.items()]
-        args = [f"{color(k, get_code(k))}: {v}\n" for k, v in self.__dict__.items()]
+        files = [f"- Reading {len(vars)} arguments from {file}\n" for file, vars in FILE_VARS.items()]
+        args = [f"{GET_COLOR(k)}: {v}\n" for k, v in self.__dict__.items()]
         return "".join([HEADER, *files, *args, FOOTER])
 
-    def _get_members(self):
-        yield from inspect.getmembers(self, member_filter)
+    def _all_variables(self):
+        return [n for n in self.__class__.__dict__ if not n.startswith("_")]
 
-    def _load_default_args(self, default_args):
-        for name, value in vars(default_args).items():
-            setattr(self, name, value)
+    def _all_fields(self) -> List[Field[Any]]:
+        return list(filter(lambda f: f.init, fields(self)))
 
-    def _handle_special_args(self, argv):
-        if "--unobserved" in argv:
-            argv.remove("--unobserved")
+    def _raise_untyped(self):
+        all_vars = set(self._all_variables())
+        all_fields = {f.name for f in self._all_fields()}
+        untyped_vars = all_vars - all_fields
+        if len(untyped_vars) != 0:
+            raise ValueError(
+                f"Variables missing type annotations: {', '.join(untyped_vars)}"
+            )
 
-    def _load_config_args(self, argv):
-        for config in argv:
-            self._parse_config_file(config)
+    def get(self, name):
+        return getattr(self, name)
 
-    def _parse_config_file(self, file):
-        variables = read_config(file)
-        for name, value in variables.items():
-            setattr(self, name, value)
-            CONFIG_ARGS.append(name)
-        FILE_LIST[file] = len(variables)
-
-    def _load_cmdline_args(self, cmdline_args):
-        for name, value in vars(cmdline_args).items():
-            setattr(self, name, value)
-
-    def parse_args(self, args=None) -> None:
-        default_args, argv = parser.parse_known_args(args)
-        cmdline_args, argv = cmdline_parser.parse_known_args(args)
-        DEFAULT_ARGS.extend(default_args.__dict__.keys())
-        COMMAND_LINE_ARGS.extend(cmdline_args.__dict__.keys())
-
-        # order matters here, load default, then file, then commandline args
-        self._load_default_args(default_args)
-        self._handle_special_args(argv)
-        self._load_config_args(argv)
-        self._load_cmdline_args(cmdline_args)
+    def set(self, name, val):
+        setattr(self, name, val)
 
     def to_dict(self):
-        return dict(self.__dict__.items())
+        return dict(self.__dict__)
 
-    def merge_from_dict(self, d):
-        self.__dict__.update(d)
+    def update(self, new_dict):
+        self.__dict__.update(new_dict)
 
+    def parse_config_files(self, argv):
+        configs = [f for f in argv if f.endswith(".py")]
+        other = [f for f in argv if not f.endswith(".py")]
 
+        print(f"Skipping: {other}")
+
+        return {} if is_notebook() else {file: read_config(file) for file in configs}
