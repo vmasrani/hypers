@@ -158,6 +158,7 @@ class Hypers:
         configs = [f for f in argv if f.endswith(".py")]
         other = [f for f in argv if not f.endswith(".py")]
 
-        print(f"Skipping: {other}")
+        if other:
+            print(f"Skipping: {other}")
 
         return {} if is_notebook() else {file: read_config(file) for file in configs}
