@@ -1,6 +1,6 @@
 # Hypers: Simplified Hyperparameter Management
 
-Hypers is a lightweight Python class designed to simplify the management of machine learning hyperparameters. It abstracts away the complexities of using argparse, providing a more intuitive and user-friendly interface.
+Hypers is a lightweight Python class designed to simplify managing machine learning hyperparameters. It abstracts away the complexities of using argparse, providing a more intuitive and user-friendly interface.
 
 ## Features
 - **Automatic command line access**: Hypers automatically integrates with argparse, inferring types and providing command line access to your hyperparameters.
