@@ -63,8 +63,13 @@ def read_config(file):
         raise ValueError(f"{file} is not a valid argument.") from exc
 
 
-def TBD():
-    return field(init=False, repr=False)  # pylint: disable=invalid-field-call
+def TBD(default=None):
+    if default is None:
+        return field(init=False, repr=False)  # pylint: disable=invalid-field-call
+    elif isinstance(default, list):
+        return field(default_factory=lambda: default, init=False, repr=False)  # pylint: disable=invalid-field-call
+    else:
+        return field(default=default, init=False, repr=False)  # pylint: disable=invalid-field-call
 
 
 def load_globals(file_vars, changed_args):
@@ -130,8 +135,6 @@ class Hypers:
     def _all_variables(self):
         return [n for n in self.__class__.__dict__ if not n.startswith("_")]
 
-    def _all_fields(self) -> List[Field[Any]]:
-        return list(filter(lambda f: f.init, fields(self)))
 
     def _raise_untyped(self):
         all_vars = set(self._all_variables())
@@ -141,6 +144,8 @@ class Hypers:
             raise ValueError(
                 f"Variables missing type annotations: {', '.join(untyped_vars)}"
             )
+    def _all_fields(self) -> List[Field[Any]]:
+        return list(filter(lambda f: f.init, fields(self)))
 
     def get(self, name):
         return getattr(self, name)
@@ -156,9 +161,5 @@ class Hypers:
 
     def parse_config_files(self, argv):
         configs = [f for f in argv if f.endswith(".py")]
-        other = [f for f in argv if not f.endswith(".py")]
-
-        if other:
-            print(f"Skipping: {other}")
-
+        # other = [f for f in argv if not f.endswith(".py")]
         return {} if is_notebook() else {file: read_config(file) for file in configs}
