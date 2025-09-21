@@ -5,6 +5,8 @@ import sys
 import argparse
 from IPython.core.getipython import get_ipython
 
+__all__ = ["Hypers", "TBD"]
+
 # see https://www.geeksforgeeks.org/how-to-add-colour-to-text-python/
 
 
